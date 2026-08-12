@@ -30,7 +30,7 @@ window.TASKS = [
     start: "2026-08-11",
     end: "2026-08-11",
     assignees: [{ name: "吉田", hours: 10 }],
-    extra: { model: "製品A" }   // ← ここに入れる
+    extra: { model: "製品A" }
   },
   {
     taskNo: "2608-0002",
@@ -38,7 +38,8 @@ window.TASKS = [
     model: "製品A",
     start: "2026-08-12",
     end: "2026-08-12",
-    assignees: [{ name: "吉田", hours: 3 }]
+    assignees: [{ name: "吉田", hours: 3 }],
+    extra: { model: "製品A" }
   },
   {
     taskNo: "2608-0003",
@@ -46,7 +47,8 @@ window.TASKS = [
     model: "製品A",
     start: "2026-08-12",
     end: "2026-08-13",
-    assignees: [{ name: "吉田", hours: 4 }]
+    assignees: [{ name: "吉田", hours: 4 }],
+    extra: { model: "製品A" }
   },
   {
     taskNo: "2608-0004",
@@ -54,7 +56,8 @@ window.TASKS = [
     model: "製品A",
     start: "2026-08-14",
     end: "2026-08-15",
-    assignees: [{ name: "鈴木", hours: 15 }]
+    assignees: [{ name: "鈴木", hours: 15 }],
+    extra: { model: "製品A" }
   },
   {
     taskNo: "2608-0005",
@@ -62,7 +65,8 @@ window.TASKS = [
     model: "製品A",
     start: "2026-08-17",
     end: "2026-08-19",
-    assignees: [{ name: "伊藤", hours: 21 }]
+    assignees: [{ name: "伊藤", hours: 21 }],
+    extra: { model: "製品A" }
   },
   {
     taskNo: "2608-0006",
@@ -73,6 +77,7 @@ window.TASKS = [
     assignees: [
       { name: "山田", hours: 12 },
       { name: "伊藤", hours: 6 }
-    ]
+    ],
+    extra: { model: "製品A" }
   }
 ];
