@@ -35,7 +35,6 @@ window.TASKS = [
   {
     taskNo: "2608-0002",
     name: "要件定義書レビュー",
-    model: "製品A",
     start: "2026-08-12",
     end: "2026-08-12",
     assignees: [{ name: "吉田", hours: 3 }],
@@ -44,7 +43,6 @@ window.TASKS = [
   {
     taskNo: "2608-0003",
     name: "要件定義書指摘反映",
-    model: "製品A",
     start: "2026-08-12",
     end: "2026-08-13",
     assignees: [{ name: "吉田", hours: 4 }],
@@ -53,7 +51,6 @@ window.TASKS = [
   {
     taskNo: "2608-0004",
     name: "詳細設計書作成",
-    model: "製品A",
     start: "2026-08-14",
     end: "2026-08-15",
     assignees: [{ name: "鈴木", hours: 15 }],
@@ -62,7 +59,6 @@ window.TASKS = [
   {
     taskNo: "2608-0005",
     name: "ソフトウェア実装",
-    model: "製品A",
     start: "2026-08-17",
     end: "2026-08-19",
     assignees: [{ name: "伊藤", hours: 21 }],
@@ -71,7 +67,6 @@ window.TASKS = [
   {
     taskNo: "2608-0006",
     name: "統合テスト実施",
-    model: "製品A",
     start: "2026-08-20",
     end: "2026-08-24",
     assignees: [
