@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リソース負荷管理ツール</title>
+<!-- 現場ごとに差し替える設定ファイル群 -->
+<script src="config.js"></script>
+<script src="holidays.js"></script>
+<script src="tasks.js"></script>
+<style>
+  :root{
+    --navy:#1B2A4A;
+    --navy-dark:#121D33;
+    --teal:#00B8A9;
+    --ice:#E8EDF5;
+    --white:#FFFFFF;
+    --muted:#6B7280;
+    --off:#F6E4EF;
+    --off-text:#8A5A78;
+    --over-bg:#DC2626;
+    --over-text:#FFFFFF;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    padding:40px 24px;
+    background:var(--ice);
+    font-family:"Calibri","Segoe UI",Meiryo,sans-serif;
+    color:var(--navy);
+  }
+
+  .dashboard{
+    max-width:1400px;
+    margin:0 auto;
+    background:var(--white);
+    border:2px solid var(--navy);
+    border-radius:28px;
+    padding:36px 40px 44px;
+    box-shadow:0 12px 32px rgba(27,42,74,0.12);
+  }
+
+  .dashboard-header{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:8px;
+    flex-wrap:wrap;
+  }
+
+  .dashboard-header .dot{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:var(--teal);
+    flex-shrink:0;
+  }
+
+  .dashboard-header h1{
+    font-family:"Cambria","Times New Roman",serif;
+    font-size:26px;
+    font-weight:700;
+    margin:0;
+    color:var(--navy);
+    letter-spacing:0.02em;
+  }
+
+  .divider{
+    height:1px;
+    background:linear-gradient(to right, var(--navy) 0%, rgba(27,42,74,0.08) 60%);
+    margin:0 0 20px;
+  }
+
+  .range-nav{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:24px;
+  }
+
+  .range-nav .label{
+    font-family:"Cambria","Times New Roman",serif;
+    font-size:16px;
+    font-weight:700;
+    min-width:200px;
+    text-align:center;
+  }
+
+  .btn{
+    flex-shrink:0;
+    background:var(--navy);
+    color:var(--white);
+    border:none;
+    border-radius:8px;
+    padding:8px 14px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+  }
+
+  .btn:hover{ background:var(--navy-dark); }
+  .btn.ghost{
+    background:var(--white);
+    color:var(--navy);
+    border:1px solid var(--navy);
+  }
+  .btn.ghost:hover{ background:var(--ice); }
+
+  .section-title{
+    font-family:"Cambria","Times New Roman",serif;
+    font-size:16px;
+    font-weight:700;
+    color:var(--navy);
+    margin:24px 0 8px;
+  }
+
+  .grid-wrap{
+    overflow-x:auto;
+    border:1px solid #DCE3EF;
+    border-radius:12px;
+  }
+
+  .task-scroll{
+    overflow-y:auto;
+    max-height:50vh;
+  }
+
+  table{
+    border-collapse:collapse;
+    table-layout:fixed;
+    font-size:12px;
+  }
+
+  th, td{
+    border:1px solid #E4E9F2;
+    padding:6px 4px;
+    text-align:center;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+  }
+
+  thead th{
+    background:var(--navy);
+    color:var(--white);
+    font-weight:700;
+    position:sticky;
+    top:0;
+    z-index:3;
+  }
+
+  thead tr.weekday-row th{
+    background:var(--navy-dark);
+    font-size:11px;
+    top:27px;
+  }
+
+  th.fixed-col, td.fixed-col{
+    text-align:left;
+    padding-left:8px;
+  }
+
+  td.fixed-col.col-name{
+    text-align:right;
+    padding-left:4px;
+    padding-right:10px;
+  }
+
+  td.is-off, th.is-off{
+    background:var(--off);
+    color:var(--off-text);
+  }
+
+  td.num{
+    font-variant-numeric:tabular-nums;
+  }
+
+  td.over{
+    background:var(--over-bg);
+    color:var(--over-text);
+    font-weight:700;
+  }
+
+  .legend{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    margin-top:16px;
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .legend .swatch{
+    display:inline-block;
+    width:12px;
+    height:12px;
+    border-radius:3px;
+    margin-right:6px;
+    vertical-align:middle;
+  }
+
+  .data-bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:28px;
+    padding:10px 14px;
+    background:var(--ice);
+    border-radius:10px;
+  }
+
+  .data-status{
+    font-size:12px;
+    color:var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+
+  <div class="dashboard-header">
+    <span class="dot"></span>
+    <h1 id="project-title">&lt;&gt;</h1>
+  </div>
+  <div class="divider"></div>
+
+  <div class="range-nav">
+    <button type="button" class="btn ghost" id="prev-range">&lt; 前へ</button>
+    <span class="label" id="range-label">-</span>
+    <button type="button" class="btn ghost" id="next-range">次へ &gt;</button>
+  </div>
+
+  <div class="section-title">タスク一覧</div>
+  <div class="grid-wrap task-scroll">
+    <table id="task-table"></table>
+  </div>
+
+  <div class="section-title">担当者別 日次負荷サマリー</div>
+  <div class="grid-wrap">
+    <table id="summary-table"></table>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--off)"></span>土日・祝日</span>
+    <span><span class="swatch" style="background:var(--over-bg)"></span>過負荷(閾値超過)</span>
+  </div>
+
+  <div class="data-bar">
+    <span class="data-status" id="data-status">読み込み中...</span>
+    <button type="button" class="btn" id="refresh-btn">今すぐ更新</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const config = window.RESOURCE_CONFIG;
+  const dataStatusEl = document.getElementById('data-status');
+  const WEEKDAY_LABELS = ['日','月','火','水','木','金','土'];
+  const VISIBLE_DAYS = config.visibleDays || 14;
+  const NAV_STEP_DAYS = config.navStepDays || 7;
+  const DATE_COL_WIDTH = 32;
+
+  // タスク一覧の列は、順番も含めてすべてconfig.jsのtaskFieldsで定義します。
+  // taskNo/name/hours/start/end/assigneeはタスクの基本情報から自動計算され、
+  // それ以外のkeyはtasks.js側の各タスクのextraオブジェクトから取得します。
+  const CORE_KEYS = { taskNo: 1, name: 1, hours: 1, start: 1, end: 1, assignee: 1 };
+  function getFieldValue(row, f){
+    if (f.key === 'start' || f.key === 'end') return row[f.key].slice(5);
+    if (CORE_KEYS[f.key]) return row[f.key];
+    return (row.extra && row.extra[f.key] != null) ? row.extra[f.key] : '';
+  }
+  const TASK_FIXED_COLS = (config.taskFields || []).map(function(f){
+    return {
+      label: f.label,
+      width: f.width || 70,
+      numeric: !!f.numeric,
+      alignRight: !!f.alignRight,
+      get: function(row){ return getFieldValue(row, f); }
+    };
+  });
+  const TASK_FIXED_TOTAL = TASK_FIXED_COLS.reduce(function(s, c){ return s + c.width; }, 0);
+
+  document.getElementById('project-title').textContent = '<' + config.projectName + '>';
+
+  // ---- 日付ユーティリティ ----
+  function pad2(n){ return String(n).padStart(2, '0'); }
+  function toISO(date){ return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate()); }
+  function parseISO(s){
+    const parts = s.split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  function addDays(date, n){
+    const d = new Date(date);
+    d.setDate(d.getDate() + n);
+    return d;
+  }
+  function isWeekend(date){
+    const w = date.getDay();
+    return w === 0 || w === 6;
+  }
+  function startOfToday(){
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  function getVisibleDates(start, count){
+    const dates = [];
+    for (let i = 0; i < count; i++){ dates.push(addDays(start, i)); }
+    return dates;
+  }
+  function fmtShort(date){
+    return (date.getMonth() + 1) + '/' + date.getDate() + '(' + WEEKDAY_LABELS[date.getDay()] + ')';
+  }
+
+  // ---- 営業日計算 ----
+  function businessDaysBetween(startISO, endISO, holidaySet){
+    const start = parseISO(startISO), end = parseISO(endISO);
+    const days = [];
+    if (end < start) return days;
+    let cur = start;
+    while (cur <= end){
+      if (!isWeekend(cur) && !holidaySet.has(toISO(cur))){
+        days.push(toISO(cur));
+      }
+      cur = addDays(cur, 1);
+    }
+    if (days.length === 0){
+      // 営業日が1日も無い期間(祝日のみ等)は、フォールバックとして期間内の全日を対象にする
+      cur = start;
+      while (cur <= end){ days.push(toISO(cur)); cur = addDays(cur, 1); }
+    }
+    return days;
+  }
+
+  // ---- 負荷計算(タスク×担当者の日次分と、担当者ごとの日次合計) ----
+  function computeLoads(tasks, holidaySet){
+    const rows = [];
+    const memberDaily = {};
+    (tasks || []).forEach(function(task){
+      (task.assignees || []).forEach(function(a){
+        const workDays = businessDaysBetween(task.start, task.end, holidaySet);
+        const rate = workDays.length ? (a.hours / workDays.length) : 0;
+        const dailyMap = {};
+        workDays.forEach(function(d){ dailyMap[d] = rate; });
+        rows.push({
+          taskNo: task.taskNo, name: task.name, start: task.start, end: task.end,
+          assignee: a.name, hours: a.hours, dailyMap: dailyMap, extra: task.extra || {}
+        });
+        if (!memberDaily[a.name]) memberDaily[a.name] = {};
+        workDays.forEach(function(d){
+          memberDaily[a.name][d] = (memberDaily[a.name][d] || 0) + rate;
+        });
+      });
+    });
+    return { rows: rows, memberDaily: memberDaily };
+  }
+
+  function fmtHours(v){
+    if (v == null) return '';
+    const r = Math.round(v * 10) / 10;
+    if (r === 0) return '';
+    return (r % 1 === 0) ? String(r) : r.toFixed(1);
+  }
+
+  function esc(s){
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function getThresholds(memberName){
+    const found = (config.members || []).find(function(m){ return m.name === memberName; });
+    return {
+      over: found && found.overloadThreshold != null ? found.overloadThreshold : config.defaultOverloadThreshold
+    };
+  }
+
+  // ---- 表示範囲(既定: 今日から2週間) ----
+  let rangeStart = config.startDate ? parseISO(config.startDate) : startOfToday();
+
+  function renderAll(){
+    const holidaySet = new Set(window.HOLIDAYS || []);
+    const tasks = window.TASKS || [];
+    const visibleDates = getVisibleDates(rangeStart, VISIBLE_DAYS);
+    const last = visibleDates[visibleDates.length - 1];
+    document.getElementById('range-label').textContent = fmtShort(visibleDates[0]) + ' 〜 ' + fmtShort(last);
+
+    const loads = computeLoads(tasks, holidaySet);
+    renderTaskTable(loads.rows, visibleDates, holidaySet);
+    renderSummaryTable(loads.memberDaily, visibleDates, holidaySet);
+  }
+
+  function colgroupHTML(){
+    let html = '<colgroup>';
+    TASK_FIXED_COLS.forEach(function(c){ html += '<col style="width:' + c.width + 'px">'; });
+    html += '<col style="width:' + DATE_COL_WIDTH + 'px" span="' + VISIBLE_DAYS + '">';
+    html += '</colgroup>';
+    return html;
+  }
+
+  // 両テーブルで共通の日付部分ヘッダー(数字行・曜日行)
+  function dateHeadRows(visibleDates, holidaySet){
+    let row1 = '', row2 = '<tr class="weekday-row">';
+    visibleDates.forEach(function(d){
+      const off = isWeekend(d) || holidaySet.has(toISO(d));
+      row1 += '<th class="' + (off ? 'is-off' : '') + '">' + d.getDate() + '</th>';
+      row2 += '<th class="' + (off ? 'is-off' : '') + '">' + WEEKDAY_LABELS[d.getDay()] + '</th>';
+    });
+    row2 += '</tr>';
+    return { row1: row1, row2: row2 };
+  }
+
+  function taskTableHeadHTML(visibleDates, holidaySet){
+    const d = dateHeadRows(visibleDates, holidaySet);
+    let head1 = '<tr>';
+    TASK_FIXED_COLS.forEach(function(c){ head1 += '<th class="fixed-col" rowspan="2">' + esc(c.label) + '</th>'; });
+    head1 += d.row1 + '</tr>';
+    return '<thead>' + head1 + d.row2 + '</thead>';
+  }
+
+  function summaryTableHeadHTML(visibleDates, holidaySet){
+    const d = dateHeadRows(visibleDates, holidaySet);
+    const head1 = '<tr><th class="fixed-col" colspan="' + TASK_FIXED_COLS.length + '" rowspan="2">担当者</th>' + d.row1 + '</tr>';
+    return '<thead>' + head1 + d.row2 + '</thead>';
+  }
+
+  // タスク一覧と担当者別サマリーは別テーブルですが、同じcolgroup(列幅)と
+  // 明示的なtable幅を使うことで、日付列の位置を一致させています。
+  function renderTaskTable(rows, visibleDates, holidaySet){
+    const table = document.getElementById('task-table');
+    let html = colgroupHTML();
+    html += taskTableHeadHTML(visibleDates, holidaySet);
+    html += '<tbody>';
+    rows.forEach(function(row){
+      html += '<tr>';
+      TASK_FIXED_COLS.forEach(function(col){
+        const val = col.get(row);
+        const cls = 'fixed-col' + (col.numeric ? ' num' : '') + (col.alignRight ? ' col-name' : '');
+        html += '<td class="' + cls + '" title="' + esc(val) + '">' + esc(val) + '</td>';
+      });
+      visibleDates.forEach(function(d){
+        const iso = toISO(d);
+        const off = isWeekend(d) || holidaySet.has(iso);
+        const v = row.dailyMap[iso];
+        html += '<td class="num' + (off ? ' is-off' : '') + '">' + fmtHours(v) + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+    table.style.width = (TASK_FIXED_TOTAL + VISIBLE_DAYS * DATE_COL_WIDTH) + 'px';
+  }
+
+  function renderSummaryTable(memberDaily, visibleDates, holidaySet){
+    const table = document.getElementById('summary-table');
+    const names = (config.members || []).map(function(m){ return m.name; });
+    Object.keys(memberDaily).forEach(function(n){
+      if (names.indexOf(n) === -1) names.push(n);
+    });
+
+    let html = colgroupHTML();
+    html += summaryTableHeadHTML(visibleDates, holidaySet);
+    html += '<tbody>';
+    names.forEach(function(name){
+      const th = getThresholds(name);
+      const daily = memberDaily[name] || {};
+      html += '<tr>';
+      html += '<td class="fixed-col col-name" colspan="' + TASK_FIXED_COLS.length + '" title="' + esc(name) + '">' + esc(name) + '</td>';
+      visibleDates.forEach(function(d){
+        const iso = toISO(d);
+        const off = isWeekend(d) || holidaySet.has(iso);
+        const v = daily[iso];
+        let cls = 'num';
+        if (off) cls += ' is-off';
+        else if (v != null && v > th.over) cls += ' over';
+        html += '<td class="' + cls + '">' + fmtHours(v) + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+    table.style.width = (TASK_FIXED_TOTAL + VISIBLE_DAYS * DATE_COL_WIDTH) + 'px';
+  }
+
+  // タスク一覧と担当者別サマリーは別々のスクロール領域なので、
+  // 横スクロールだけ同期させて日付列の位置がずれないようにする
+  (function setupSyncedScroll(){
+    const wraps = document.querySelectorAll('.grid-wrap');
+    const taskWrap = wraps[0], summaryWrap = wraps[1];
+    let syncing = false;
+    function sync(from, to){
+      if (syncing) return;
+      syncing = true;
+      to.scrollLeft = from.scrollLeft;
+      syncing = false;
+    }
+    taskWrap.addEventListener('scroll', function(){ sync(taskWrap, summaryWrap); });
+    summaryWrap.addEventListener('scroll', function(){ sync(summaryWrap, taskWrap); });
+  })();
+
+  // ---- 表示範囲の切り替え(週単位でスライド) ----
+  document.getElementById('prev-range').addEventListener('click', function(){
+    rangeStart = addDays(rangeStart, -NAV_STEP_DAYS);
+    renderAll();
+  });
+  document.getElementById('next-range').addEventListener('click', function(){
+    rangeStart = addDays(rangeStart, NAV_STEP_DAYS);
+    renderAll();
+  });
+
+  // ---- tasks.js / holidays.js の自動読み込み・更新 ----
+  const intervalSec = config.autoRefreshIntervalSec || 30;
+  const tasksFile = (config.dataFiles && config.dataFiles.tasks) || 'tasks.js';
+  const holidaysFile = (config.dataFiles && config.dataFiles.holidays) || 'holidays.js';
+
+  function loadScript(src, onLoaded, onError){
+    const script = document.createElement('script');
+    script.src = src + '?t=' + Date.now();
+    script.onload = function(){ script.remove(); onLoaded(); };
+    script.onerror = function(){ script.remove(); onError(); };
+    document.body.appendChild(script);
+  }
+
+  function refresh(){
+    loadScript(tasksFile, function(){
+      loadScript(holidaysFile, function(){
+        renderAll();
+        const now = new Date().toLocaleTimeString('ja-JP');
+        dataStatusEl.textContent =
+          'データソース: ' + tasksFile + ' / ' + holidaysFile + '(' + (window.TASKS || []).length + 'タスク) / ' +
+          intervalSec + '秒ごとに自動更新・最終チェック ' + now;
+      }, function(){
+        dataStatusEl.textContent = holidaysFile + ' の読み込みに失敗しました';
+      });
+    }, function(){
+      dataStatusEl.textContent = tasksFile + ' の読み込みに失敗しました';
+    });
+  }
+
+  document.getElementById('refresh-btn').addEventListener('click', refresh);
+  setInterval(refresh, intervalSec * 1000);
+
+  // 初回表示
+  renderAll();
+  dataStatusEl.textContent =
+    'データソース: ' + tasksFile + ' / ' + holidaysFile + '(' + (window.TASKS || []).length + 'タスク) / ' +
+    intervalSec + '秒ごとに自動更新';
+})();
+</script>
+
+</body>
+</html>
